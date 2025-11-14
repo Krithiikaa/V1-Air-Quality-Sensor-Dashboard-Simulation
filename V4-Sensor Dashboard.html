@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Advanced Sensor Dashboard</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+  <style>
+    body {
+      background: radial-gradient(circle at top left, #1e3a8a, #111827);
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      color: #f9fafb;
+      animation: fadeIn 0.8s ease-in-out;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    .glass {
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(10px);
+      border-radius: 1rem;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    }
+    .chart-card {
+      animation: slideUp 0.8s ease forwards;
+    }
+    @keyframes slideUp {
+      0% { opacity: 0; transform: translateY(20px); }
+      100% { opacity: 1; transform: translateY(0); }
+    }
+    .hover-effect:hover {
+      transform: scale(1.02);
+      transition: transform 0.3s ease;
+    }
+  </style>
+</head>
+<body class="min-h-screen px-4 py-6">
+  <div class="max-w-6xl mx-auto">
+    <h1 class="text-4xl font-bold text-center mb-8">📡 Real-Time Sensor Dashboard</h1>
+
+```
+<div class="text-xl text-center mb-4 font-semibold">Live PM2.5 Chart</div>
+<div class="glass chart-card p-6 mb-6 hover-effect">
+  <canvas id="myChart" height="100"></canvas>
+</div>
+
+<div class="text-center mb-6">
+  <button id="exportBtn" class="bg-gradient-to-r from-blue-400 to-cyan-500 text-white font-bold py-2 px-6 rounded-full shadow-lg hover:scale-105 transition-transform">📤 Export Last 10 Minutes</button>
+</div>
+
+<div class="text-xl text-center mb-4 font-semibold">Recent Sensor Data</div>
+<div class="glass p-6 hover-effect">
+  <table class="w-full text-left text-white">
+    <thead class="bg-white bg-opacity-10 text-gray-200">
+      <tr>
+        <th class="py-2 px-4">Time</th>
+        <th class="py-2 px-4">PM2.5</th>
+      </tr>
+    </thead>
+    <tbody id="dataTable" class="divide-y divide-gray-700"></tbody>
+  </table>
+</div>
+```
+
+  </div>
+
+<script>
+let sensorData = [];
+
+const ctx = document.getElementById('myChart').getContext('2d');
+const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+gradient.addColorStop(0, 'rgba(0, 255, 157, 0.5)');
+gradient.addColorStop(1, 'rgba(0, 72, 255, 0.1)');
+
+const myChart = new Chart(ctx, {
+  type: 'line',
+  data: {
+    labels: [],
+    datasets: [{
+      label: 'PM2.5 (µg/m³)',
+      data: [],
+      borderColor: '#22d3ee',
+      backgroundColor: gradient,
+      fill: true,
+      tension: 0.4,
+      pointBackgroundColor: '#38bdf8',
+      pointBorderColor: '#0891b2',
+      pointRadius: 4
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { labels: { color: '#f3f4f6' } },
+      tooltip: { mode: 'index', intersect: false }
+    },
+    scales: {
+      x: {
+        ticks: { color: '#f3f4f6' },
+        title: { display: true, text: 'Time', color: '#f3f4f6' }
+      },
+      y: {
+        beginAtZero: true,
+        ticks: { color: '#f3f4f6' },
+        title: { display: true, text: 'PM2.5 (µg/m³)', color: '#f3f4f6' }
+      }
+    }
+  }
+});
+
+function generateSampleData() {
+  const now = Date.now();
+  const randomPM = 10 + Math.random() * 40;
+  return { timestamp: now, pm25: parseFloat(randomPM.toFixed(1)) };
+}
+
+function updateDashboard() {
+  const newData = generateSampleData();
+  sensorData.push(newData);
+  const tenMinAgo = Date.now() - 10 * 60 * 1000;
+  sensorData = sensorData.filter(d => d.timestamp >= tenMinAgo);
+  sensorData.sort((a, b) => a.timestamp - b.timestamp);
+
+  myChart.data.labels = sensorData.map(d => new Date(d.timestamp).toLocaleTimeString());
+  myChart.data.datasets[0].data = sensorData.map(d => d.pm25);
+  myChart.update();
+
+  const tbody = document.getElementById('dataTable');
+  tbody.innerHTML = '';
+  sensorData.forEach(item => {
+    const row = document.createElement('tr');
+    row.innerHTML = `<td class='py-2 px-4'>${new Date(item.timestamp).toLocaleTimeString()}</td><td class='py-2 px-4'>${item.pm25}</td>`;
+    tbody.appendChild(row);
+  });
+}
+
+setInterval(updateDashboard, 5000);
+
+document.getElementById('exportBtn').addEventListener('click', () => {
+  const exportRows = sensorData.map(item => ({
+    Time: new Date(item.timestamp).toLocaleString(),
+    PM2_5: item.pm25
+  }));
+  const worksheet = XLSX.utils.json_to_sheet(exportRows);
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, "Last 10 Minutes");
+  XLSX.writeFile(workbook, "SensorData_Last10Min.xlsx");
+});
+</script>
+
+</body>
+</html>
