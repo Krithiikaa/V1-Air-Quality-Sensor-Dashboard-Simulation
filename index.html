@@ -1,108 +1,220 @@
 <!DOCTYPE html>
+
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Real-Time Sensor Dashboard (Sample Data)</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/css/bootstrap.min.css">
+  <title>Advanced Air Quality Dashboard</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+  <style>
+    body {
+      background: #0f172a;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      color: #f1f5f9;
+    }
+    .glass {
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(10px);
+      border-radius: 1rem;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    }
+    .grid-card {
+      padding: 1.5rem;
+      border-radius: 1rem;
+      color: white;
+      font-weight: bold;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      box-shadow: inset 0 0 0 2px rgba(255,255,255,0.05);
+    }
+    .label-tag {
+      margin-top: 0.5rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      background-color: rgba(255,255,255,0.1);
+      padding: 0.2rem 0.6rem;
+      border-radius: 999px;
+      display: inline-block;
+      width: fit-content;
+    }
+  </style>
 </head>
-<body class="bg-light">
-<div class="container my-4">
-  <h1 class="mb-4">Real-Time Sensor Dashboard (Demo)</h1>
+<body class="p-6">
+  <div class="max-w-7xl mx-auto">
+    <h1 class="text-3xl font-bold text-center mb-8">Air Quality Monitoring Dashboard</h1>
 
-  <div class="card mb-4">
-    <div class="card-body">
-      <canvas id="myChart" height="100"></canvas>
-    </div>
+```
+<div class="grid md:grid-cols-3 lg:grid-cols-6 gap-4 mb-10">
+  <div class="grid-card bg-blue-800">
+    <div>PM2.5</div>
+    <div class="text-2xl" id="pm25-val">0</div>
+    <span class="label-tag" id="pm25-status">Loading</span>
   </div>
-
-  <button id="exportBtn" class="btn btn-primary mb-3">Export Last 10 Minutes to Excel</button>
-
-  <div class="card">
-    <div class="card-body">
-      <h5 class="card-title">Last 10 Minutes of Readings</h5>
-      <table id="dataTable" class="table table-striped">
-        <thead>
-          <tr><th>Time</th><th>PM2.5</th></tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-    </div>
+  <div class="grid-card bg-yellow-900">
+    <div>PM10</div>
+    <div class="text-2xl" id="pm10-val">0</div>
+    <span class="label-tag" id="pm10-status">Loading</span>
+  </div>
+  <div class="grid-card bg-green-800">
+    <div>CO2 Level</div>
+    <div class="text-2xl" id="co2-val">0</div>
+    <span class="label-tag" id="co2-status">Loading</span>
+  </div>
+  <div class="grid-card bg-red-900">
+    <div>Temperature</div>
+    <div class="text-2xl" id="temp-val">0</div>
+    <span class="label-tag">°C</span>
+  </div>
+  <div class="grid-card bg-purple-900">
+    <div>Humidity</div>
+    <div class="text-2xl" id="humid-val">0</div>
+    <span class="label-tag">%</span>
+  </div>
+  <div class="grid-card bg-amber-900">
+    <div>Overall AQI</div>
+    <div class="text-2xl" id="aqi-val">0</div>
+    <span class="label-tag" id="aqi-status">Loading</span>
   </div>
 </div>
+
+<div class="bg-slate-800 rounded-lg p-6 mb-6">
+  <canvas id="myChart"></canvas>
+</div>
+
+<div class="text-center mb-6">
+  <button id="exportBtn" class="bg-cyan-500 hover:bg-cyan-600 text-white font-bold py-2 px-6 rounded-full shadow-lg">📤 Export Last 10 Minutes</button>
+</div>
+
+<div class="bg-slate-800 p-6 rounded-lg">
+  <h2 class="text-xl font-semibold mb-4">Sensor Readings</h2>
+  <table class="w-full text-left text-white">
+    <thead>
+      <tr>
+        <th class="py-2 px-4">Timestamp</th>
+        <th class="py-2 px-4">PM2.5</th>
+        <th class="py-2 px-4">PM10</th>
+        <th class="py-2 px-4">CO2</th>
+        <th class="py-2 px-4">Temp</th>
+        <th class="py-2 px-4">Humidity</th>
+        <th class="py-2 px-4">AQI</th>
+      </tr>
+    </thead>
+    <tbody id="dataTable" class="divide-y divide-gray-700"></tbody>
+  </table>
+</div>
+```
+
+  </div>
 
 <script>
 let sensorData = [];
 
-const ctx = document.getElementById('myChart').getContext('2d');
-const myChart = new Chart(ctx, {
-  type: 'line',
-  data: {
-    labels: [],
-    datasets: [{
-      label: 'PM2.5',
-      data: [],
-      borderColor: 'rgba(75, 192, 192, 1)',
-      backgroundColor: 'rgba(75, 192, 192, 0.2)',
-      fill: false,
-      tension: 0.1
-    }]
-  },
-  options: {
-    scales: {
-      x: {
-        title: { display: true, text: 'Time' }
-      },
-      y: {
-        beginAtZero: true,
-        title: { display: true, text: 'PM2.5 (µg/m³)' }
-      }
-    }
-  }
-});
-
 function generateSampleData() {
   const now = Date.now();
-  const randomPM = 10 + Math.random() * 40;
-  return { timestamp: now, pm25: parseFloat(randomPM.toFixed(1)) };
+  return {
+    timestamp: now,
+    pm25: +(Math.random() * 50).toFixed(1),
+    pm10: +(Math.random() * 100).toFixed(1),
+    co2: +(400 + Math.random() * 300).toFixed(0),
+    temp: +(15 + Math.random() * 10).toFixed(1),
+    humidity: +(60 + Math.random() * 30).toFixed(1),
+    aqi: +(50 + Math.random() * 100).toFixed(0)
+  };
 }
 
 function updateDashboard() {
   const newData = generateSampleData();
   sensorData.push(newData);
-  const tenMinAgo = Date.now() - 10 * 60 * 1000;
-  sensorData = sensorData.filter(d => d.timestamp >= tenMinAgo);
-  sensorData.sort((a, b) => a.timestamp - b.timestamp);
+  const cutoff = Date.now() - 600000;
+  sensorData = sensorData.filter(d => d.timestamp >= cutoff);
 
-  myChart.data.labels = sensorData.map(d => new Date(d.timestamp).toLocaleTimeString());
-  myChart.data.datasets[0].data = sensorData.map(d => d.pm25);
-  myChart.update();
+  document.getElementById("pm25-val").innerText = newData.pm25 + ' µg/m³';
+  document.getElementById("pm10-val").innerText = newData.pm10 + ' µg/m³';
+  document.getElementById("co2-val").innerText = newData.co2 + ' ppm';
+  document.getElementById("temp-val").innerText = newData.temp;
+  document.getElementById("humid-val").innerText = newData.humidity;
+  document.getElementById("aqi-val").innerText = newData.aqi;
 
-  const tbody = document.querySelector('#dataTable tbody');
+  document.getElementById("pm25-status").innerText = newData.pm25 < 35 ? 'Moderate' : 'Unhealthy';
+  document.getElementById("pm10-status").innerText = newData.pm10 < 80 ? 'Moderate' : 'High';
+  document.getElementById("co2-status").innerText = newData.co2 < 600 ? 'Good' : 'Elevated';
+  document.getElementById("aqi-status").innerText = newData.aqi < 100 ? 'Moderate' : 'Poor';
+
+  const tbody = document.getElementById('dataTable');
   tbody.innerHTML = '';
   sensorData.forEach(item => {
-    const row = tbody.insertRow();
-    row.insertCell(0).innerText = new Date(item.timestamp).toLocaleTimeString();
-    row.insertCell(1).innerText = item.pm25;
+    const row = document.createElement('tr');
+    row.innerHTML = `
+      <td class='py-2 px-4'>${new Date(item.timestamp).toLocaleTimeString()}</td>
+      <td class='py-2 px-4'>${item.pm25}</td>
+      <td class='py-2 px-4'>${item.pm10}</td>
+      <td class='py-2 px-4'>${item.co2}</td>
+      <td class='py-2 px-4'>${item.temp}</td>
+      <td class='py-2 px-4'>${item.humidity}</td>
+      <td class='py-2 px-4'>${item.aqi}</td>`;
+    tbody.appendChild(row);
   });
+
+  myChart.data.labels = sensorData.map(d => new Date(d.timestamp).toLocaleTimeString());
+  myChart.data.datasets[0].data = sensorData.map(d => d.aqi);
+  myChart.update();
 }
 
-setInterval(updateDashboard, 5000); // simulate every 5s
+const ctx = document.getElementById('myChart').getContext('2d');
+const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+gradient.addColorStop(0, 'rgba(255, 255, 255, 0.5)');
+gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
 
-const exportBtn = document.getElementById('exportBtn');
-exportBtn.addEventListener('click', () => {
+const myChart = new Chart(ctx, {
+  type: 'line',
+  data: {
+    labels: [],
+    datasets: [{
+      label: 'AQI Trend',
+      data: [],
+      borderColor: '#38bdf8',
+      backgroundColor: gradient,
+      fill: true,
+      tension: 0.4
+    }]
+  },
+  options: {
+    plugins: {
+      legend: { labels: { color: '#f1f5f9' } }
+    },
+    scales: {
+      x: { ticks: { color: '#f1f5f9' } },
+      y: { ticks: { color: '#f1f5f9' }, beginAtZero: true }
+    }
+  }
+});
+
+setInterval(updateDashboard, 5000);
+
+document.getElementById('exportBtn').addEventListener('click', () => {
+  console.log("Export clicked");
   const exportRows = sensorData.map(item => ({
-    Time: new Date(item.timestamp).toLocaleString(),
-    PM2_5: item.pm25
+    Timestamp: new Date(item.timestamp).toLocaleString(),
+    PM2_5: item.pm25,
+    PM10: item.pm10,
+    CO2: item.co2,
+    Temp: item.temp,
+    Humidity: item.humidity,
+    AQI: item.aqi
   }));
-
+  if (exportRows.length === 0) {
+    alert("No data to export!");
+    return;
+  }
   const worksheet = XLSX.utils.json_to_sheet(exportRows);
   const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, worksheet, "Last 10 Minutes");
-  XLSX.writeFile(workbook, "SensorData_Last10Min.xlsx");
+  XLSX.utils.book_append_sheet(workbook, worksheet, "Readings");
+  XLSX.writeFile(workbook, "Sensor_Readings_10min.xlsx");
 });
 </script>
+
 </body>
 </html>
