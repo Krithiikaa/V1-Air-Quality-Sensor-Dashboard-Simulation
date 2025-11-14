@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Real-Time Sensor Dashboard (Sample Data)</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/css/bootstrap.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+</head>
+<body class="bg-light">
+<div class="container my-4">
+  <h1 class="mb-4">Real-Time Sensor Dashboard (Demo)</h1>
+
+  <div class="card mb-4">
+    <div class="card-body">
+      <canvas id="myChart" height="100"></canvas>
+    </div>
+  </div>
+
+  <button id="exportBtn" class="btn btn-primary mb-3">Export Last 10 Minutes to Excel</button>
+
+  <div class="card">
+    <div class="card-body">
+      <h5 class="card-title">Last 10 Minutes of Readings</h5>
+      <table id="dataTable" class="table table-striped">
+        <thead>
+          <tr><th>Time</th><th>PM2.5</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+let sensorData = [];
+
+const ctx = document.getElementById('myChart').getContext('2d');
+const myChart = new Chart(ctx, {
+  type: 'line',
+  data: {
+    labels: [],
+    datasets: [{
+      label: 'PM2.5',
+      data: [],
+      borderColor: 'rgba(75, 192, 192, 1)',
+      backgroundColor: 'rgba(75, 192, 192, 0.2)',
+      fill: false,
+      tension: 0.1
+    }]
+  },
+  options: {
+    scales: {
+      x: {
+        title: { display: true, text: 'Time' }
+      },
+      y: {
+        beginAtZero: true,
+        title: { display: true, text: 'PM2.5 (µg/m³)' }
+      }
+    }
+  }
+});
+
+function generateSampleData() {
+  const now = Date.now();
+  const randomPM = 10 + Math.random() * 40;
+  return { timestamp: now, pm25: parseFloat(randomPM.toFixed(1)) };
+}
+
+function updateDashboard() {
+  const newData = generateSampleData();
+  sensorData.push(newData);
+  const tenMinAgo = Date.now() - 10 * 60 * 1000;
+  sensorData = sensorData.filter(d => d.timestamp >= tenMinAgo);
+  sensorData.sort((a, b) => a.timestamp - b.timestamp);
+
+  myChart.data.labels = sensorData.map(d => new Date(d.timestamp).toLocaleTimeString());
+  myChart.data.datasets[0].data = sensorData.map(d => d.pm25);
+  myChart.update();
+
+  const tbody = document.querySelector('#dataTable tbody');
+  tbody.innerHTML = '';
+  sensorData.forEach(item => {
+    const row = tbody.insertRow();
+    row.insertCell(0).innerText = new Date(item.timestamp).toLocaleTimeString();
+    row.insertCell(1).innerText = item.pm25;
+  });
+}
+
+setInterval(updateDashboard, 5000); // simulate every 5s
+
+const exportBtn = document.getElementById('exportBtn');
+exportBtn.addEventListener('click', () => {
+  const exportRows = sensorData.map(item => ({
+    Time: new Date(item.timestamp).toLocaleString(),
+    PM2_5: item.pm25
+  }));
+
+  const worksheet = XLSX.utils.json_to_sheet(exportRows);
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, "Last 10 Minutes");
+  XLSX.writeFile(workbook, "SensorData_Last10Min.xlsx");
+});
+</script>
+</body>
+</html>
