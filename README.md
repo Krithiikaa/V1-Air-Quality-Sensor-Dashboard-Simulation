@@ -26,7 +26,7 @@ This project is a professional-grade, interactive air quality monitoring dashboa
 
 ![Dashboard Preview](./preview.png)
 ![Dashboard Preview](./preview1.png) 
-![Dashboard Preview](./preview2.png)
+![Dashboard Preview](./preview4.png)
 ![Dashboard Preview](./preview3.png)<!-- Add your own screenshot here -->
 
 ---
