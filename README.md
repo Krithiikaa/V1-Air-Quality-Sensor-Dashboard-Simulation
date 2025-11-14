@@ -49,7 +49,7 @@ This project is a professional-grade, interactive air quality monitoring dashboa
 
 ## 🌐 Live Demo
 
-[🔗 View Live Dashboard](https://<your-username>.github.io/<your-repo>/)
+[🔗 View Live Dashboard](https://krithiikaa.github.io/V1-Air-Quality-Sensor-Dashboard-Simulation/)
 
 > Replace `<your-username>` and `<your-repo>` accordingly after deploying.
 
